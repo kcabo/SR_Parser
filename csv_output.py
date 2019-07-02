@@ -1,4 +1,5 @@
 import csv
+import sys
 from time import time
 from datetime import datetime
 from tqdm import tqdm
@@ -13,37 +14,39 @@ region_ids = [
     "49", "50", "51", "52", "53", "70", "80"
 ]
 
-# region_ids = ["22"]
+# region_ids = ["14"]
 
 def records_in_csv(year):
     t1 = time()
-    path = "output/Fr100.csv"
+    path = "output/Fr100_{}.csv".format(year)
     records = []
-    print("{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.now().strftime("%H:%M:%S")))
+    count = 0
+    print("\n{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.now().strftime("%H:%M:%S")))
 
     for i, region_id in enumerate(region_ids):
         t2 = time()
-        print("{:-^8} 進行中:{}/55".format(dic.region[region_id], i + 1))
+        print("{:-^8} 進行中:{:>2}/55".format(dic.region[region_id], i + 1))
 
         meet_ids = my_parser.meet_id_list(year, region_id)
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
-            records.extend(meet.get_records(sex = 1, style = 1, distance = 3))
+            records.extend(meet.get_records(sex = 2, style = 1, distance = 3))
 
-        print(">{:.3f}\n".format(time() - t2))
+        print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(records) - count))
+        count = len(records)
 
     with open(path, "w", encoding="utf-8-sig") as f:
         writer = csv.writer(f, lineterminator='\n')
         writer.writerows(records)
 
-    print("###{}年度を完了###経過：{:.3f}秒###".format(year,time() - t2))
+    print("###{}年度を完了###経過：{:.2f}秒###".format(year,time() - t1))
 
 
 def update_meets_info():
-    path = "output/meets_info.csv"
+    path = "output/meets_info14-18.csv"
     info = []
-    years = [19,18,17]
-    print("Targes = {}".format(years))
+    years = [18,17,16,15,14]
+    print("Targets = {}".format(years))
 
     for year in years:
         for region_id in tqdm(region_ids):
@@ -71,13 +74,16 @@ def update_meets_info():
 
 if __name__ == "__main__":
 
-    target = input("year? or 'update' >> ")
+    target = input("####SR_PARSER###\ninput target years or 'update' >> ")
 
     if target == "update":
         update_meets_info()
 
-    elif target.isdecimal():
-        records_in_csv(int(target))
-
     else:
-        print("invalid")
+        target_years = target.split(",")
+        for y in target_years:
+            if y.isdecimal():
+                records_in_csv(int(y))
+            else:
+                print("invalid year")
+                sys.exit(1)

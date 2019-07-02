@@ -55,9 +55,14 @@ class Meet:
 
                 if style < 6:
                     for r in eve.records:
-                        records.append([r.name, r.team, r.grade, r.time, r.laps[0], 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
+                        index = len(r.laps)/2 - 1
+                        if index < 0:
+                            print("\nラップが存在しません。id:{} name:{} time:{}".format(self.id, r.name, r.time))
+                            records.append([r.name, r.team, r.grade, r.time, None, 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
+                        else:
+                            records.append([r.name, r.team, r.grade, r.time, r.laps[0], 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
                 else:
-                    pass
+                    pass #リレーのの抽出は今度追加しよう
         return records
 
 class Event:
@@ -93,7 +98,8 @@ class Record:
             self.name = [fix_relay_order(name) for name in data[1].contents if isinstance(name, element.NavigableString)]
             self.team = fix_td2str(data[2])
             self.grade = "Relay"
-            self.time = conv_to_100sec(fix_td2str(data[4].a)) #Lapタイム出してnameと連携させなくては、忘れてたわ どうすればいいか、明日までに考えといてください。
+            self.time = conv_to_100sec(fix_td2str(data[4].a))
+            #Lapタイム出してnameと連携させなくては、忘れてたわ どうすればいいか、明日までに考えといてください。
 
 
 
