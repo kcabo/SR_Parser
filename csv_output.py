@@ -30,7 +30,7 @@ def records_in_csv(year):
         meet_ids = my_parser.meet_id_list(year, region_id)
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
-            records.extend(meet.get_records(sex = 2, style = 1, distance = 3))
+            records.extend(meet.get_records(sex = 1, style = 1, distance = 3))
 
         print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(records) - count))
         count = len(records)
@@ -43,9 +43,9 @@ def records_in_csv(year):
 
 
 def update_meets_info():
-    path = "output/meets_info14-18.csv"
+    path = "output/meets_info14-19.csv"
     info = []
-    years = [18,17,16,15,14]
+    years = [19,18,17,16,15,14]
     print("Targets = {}".format(years))
 
     for year in years:
