@@ -10,6 +10,8 @@ event_param_ptn = re.compile(r"&code=(\d{7})&sex=(\d)&event=(\d)&distance=(\d)")
 result_link_ptn = re.compile(r"&sex=\d&event=\d&distance=\d")
 meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)")
 
+jrHigh_grade_ptn = re.compile(r"中.+([1-2])") #ここ状況に応じて変える
+
 def get_html(url, params = None):
     if params is None:
         r = requests.get(url)
@@ -47,22 +49,45 @@ class Meet:
         self.events = [Event(a["href"]) for a in events_aTags]
         self.count_events = len(self.events)
 
-    def get_records(self, sex, style, distance):
+    def get_records(self, *event_id): #sex,style,distanceをつなげた三桁がevent_idに一致するか
         records = []
-        for eve in self.events:
-            if eve.sex == sex and eve.style == style and eve.distance == distance:
-                eve.extract()
+        for event in self.events:
+            if event.event_id in event_id: #タプルで受け取った引数に含まれているか
+                event.extract() #全データ抽出
+                distance = dic.distance[event.distance]
+                style = dic.style[event.style]
 
-                if style < 6:
-                    for r in eve.records:
-                        index = len(r.laps)/2 - 1
-                        if index < 0:
-                            print("\nラップが存在しません。id:{} name:{} time:{}".format(self.id, r.name, r.time))
-                            records.append([r.name, r.team, r.grade, r.time, None, 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
-                        else:
-                            records.append([r.name, r.team, r.grade, r.time, r.laps[0], 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
-                else:
-                    pass #リレーのの抽出は今度追加しよう
+                if event.style < 6: #個人種目のとき
+                    for r in event.records:
+
+                        #----中学生のみを抽出----
+                        matchOb = re.search(jrHigh_grade_ptn, r.grade)
+                        if matchOb is not None:
+                            grade = "中学" + str(int(matchOb.group(1)) + 1) #去年の記録のときは学年をいっこあげる
+                            records.append([r.name, r.team, grade, distance, style, r.time, self.id])
+                        #--ここまで--
+
+                else: #リレー種目のとき
+                    for r in event.records:
+                        if len(r.name) == 4: #棄権のときを除く
+                            target_index = len(r.laps) / 4 - 1 #一泳のラップはどこにある？
+                            if target_index >= 0 and int(target_index) == target_index:
+                                records.append([r.name[0], r.team, r.grade, distance, style, r.laps[int(target_index)], self.id])
+
+        # for eve in self.events:
+        #     if eve.sex == sex and eve.style == style and eve.distance == distance:
+        #         eve.extract()
+        #
+        #         if style < 6:
+        #             for r in eve.records:
+        #                 index = len(r.laps)/2 - 1
+        #                 if index < 0:
+        #                     print("\nラップが存在しません。id:{} name:{} time:{}".format(self.id, r.name, r.time))
+        #                     records.append([r.name, r.team, r.grade, r.time, None, 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
+        #                 else:
+        #                     records.append([r.name, r.team, r.grade, r.time, r.laps[0], 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
+        #         else:
+        #             pass #リレーのの抽出は今度追加しよう
         return records
 
 class Event:
@@ -73,24 +98,25 @@ class Event:
         self.sex = int(matchOb.group(2))
         self.style = int(matchOb.group(3))
         self.distance = int(matchOb.group(4))
+        self.event_id = self.sex * 100 + self.style * 10 + self.distance
 
     def extract(self):
         html = get_html(self.url)
         soup = BeautifulSoup(html, "lxml")
         rows = soup.find_all("tr", align = "center", bgcolor = False) #, class_ = False) #中央寄せで背景なしクラス指定なし= レコード行
-        rows_lap = soup.find_all("tr", align = "right", id = True, style = True) #idとか指定してあるのはLAPのtrだけ
+        rows_lap = soup.find_all("tr", align = "right", id = True, style = True) #idとか指定してあるのはLAPのtrだけ このtrは見出しも含むLAPSのテーブル全体
         is_relay = False if self.style < 6 else True
-        self.records = [Record(row, r_lap, is_relay) for row, r_lap in zip(rows, rows_lap)]
+        self.records = [Record(row, row_lap, is_relay) for row, row_lap in zip(rows, rows_lap)]
 
 class Record:
-    def __init__(self, row, r_lap, is_relay):
+    def __init__(self, row, row_lap, is_relay):
         data = row.find_all("td")
         if is_relay == False:
             self.name = fix_td2str(data[1])
             self.team = fix_td2str(data[2])
             self.grade = fix_td2str(data[3])
             self.time = conv_to_100sec(fix_td2str(data[4].a))
-            laps = r_lap.find_all("td", width = True)
+            laps = row_lap.find_all("td", width = True)
             self.laps = [conv_to_100sec(fix_td2str(lap.string)) for lap in laps]
 
         else:
@@ -99,8 +125,8 @@ class Record:
             self.team = fix_td2str(data[2])
             self.grade = "Relay"
             self.time = conv_to_100sec(fix_td2str(data[4].a))
-            #Lapタイム出してnameと連携させなくては、忘れてたわ どうすればいいか、明日までに考えといてください。
-
+            laps = row_lap.find_all("td", width = True)
+            self.laps = [conv_to_100sec(fix_td2str(lap.string)) for lap in laps]
 
 
 space_erase_table = str.maketrans("","","\n\r 　 ") #第三引数に指定した文字が削除される。左から、LF,CR,半角スペース,全角スペース,nbsp
