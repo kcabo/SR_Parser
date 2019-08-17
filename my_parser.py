@@ -11,6 +11,8 @@ result_link_ptn = re.compile(r"&sex=\d&event=\d&distance=\d")
 meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)")
 
 jrHigh_grade_ptn = re.compile(r"中.+([1-2])") #ここ状況に応じて変える
+univ_grade_ptn = re.compile(r"大.+(\d)")
+
 
 def get_html(url, params = None):
     if params is None:
@@ -61,9 +63,15 @@ class Meet:
                     for r in event.records:
 
                         #----中学生のみを抽出----
-                        matchOb = re.search(jrHigh_grade_ptn, r.grade)
+                        # matchOb = re.search(jrHigh_grade_ptn, r.grade)
+
+                        #----大学生のみを抽出----
+                        matchOb = re.search(univ_grade_ptn, r.grade)
+
+
                         if matchOb is not None:
-                            grade = "中学" + str(int(matchOb.group(1)) + 1) #去年の記録のときは学年をいっこあげる
+                            # grade = "中学" + str(int(matchOb.group(1)) + 1) #去年の記録のときは学年をいっこあげる
+                            grade = "大学" + str(int(matchOb.group(1)))
                             records.append([r.name, r.team, grade, distance, style, r.time, self.id])
                         #--ここまで--
 

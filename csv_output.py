@@ -18,7 +18,10 @@ region_ids = [
 
 def records_in_csv(year):
     t1 = time()
-    path = "output/2018.4/{}.csv".format(year)
+
+    #ココ変える
+    path = "output/2019_univ/{}.csv".format(year)
+
     records = []
     count = 0
     print("\n{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.now().strftime("%H:%M:%S")))
@@ -31,7 +34,7 @@ def records_in_csv(year):
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
             if meet.pool == "長水路":
-                records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155,164,165,166,174,175))
+                records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155)) #,164,165,166,174,175))
 
         print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(records) - count))
         count = len(records)
