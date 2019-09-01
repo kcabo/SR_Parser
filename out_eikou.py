@@ -1,7 +1,7 @@
 import csv
 import sys
-import datetime
 from time import time
+from datetime import datetime
 from tqdm import tqdm
 
 import my_parser
@@ -14,52 +14,17 @@ region_ids = [
     "49", "50", "51", "52", "53", "70", "80"
 ]
 
-# region_ids = ["14"]
+region_ids = ["08", "09", "10", "11", "12", "13", "14"]
 
 def records_in_csv(year):
     t1 = time()
-    td = datetime.date.today()
-    year_records = []
-    count = 0
-    path = "output/{}/{}.csv".format(str(td),year)
-
-    print("\n{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.datetime.now().strftime("%H:%M:%S")))
-
-    for i, region_id in enumerate(region_ids):
-        t2 = time()
-        print("{:-^8} 進行中:{:>2}/55".format(dic.region[region_id], i + 1))
-
-        meet_ids = my_parser.meet_id_list(year, region_id)
-        for id in tqdm(meet_ids):
-            meet = my_parser.Meet(id)
-            for e in meet.events:
-                if e.is_relay = False:
-                    e.extract()
-                    distance = dic.distance[e.distance]
-                    style = dic.style[e.style]
-                    id = meet.id
-                    event_records_array = [[r.name, r.team, r.grade, distance, style, r.time, id] for r in e.records]
-                    year_records.extend(event_records_array)
-
-        print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(year_records) - count))
-        count = len(year_records)
-
-    with open(path, "w", encoding="utf-8-sig") as f:
-        writer = csv.writer(f, lineterminator='\n')
-        writer.writerows(year_records)
-
-    print("###{}年度を完了###経過：{:.2f}秒###".format(year,time() - t1))
-
-
-def old_records_in_csv(year):
-    t1 = time()
 
     #ココ変える
-    path = "output/2019_univ/{}.csv".format(year)
+    path = "output/2019_eikou/{}.csv".format(year)
 
     records = []
     count = 0
-    print("\n{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.datetime.now().strftime("%H:%M:%S")))
+    print("\n{}年度の抽出を開始\t現在時刻：{}\n".format(year, datetime.now().strftime("%H:%M:%S")))
 
     for i, region_id in enumerate(region_ids):
         t2 = time()
@@ -68,8 +33,8 @@ def old_records_in_csv(year):
         meet_ids = my_parser.meet_id_list(year, region_id)
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
-            if meet.pool == "長水路":
-                records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155)) #,164,165,166,174,175))
+
+            records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155)) #,164,165,166,174,175))
 
         print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(records) - count))
         count = len(records)
@@ -120,7 +85,6 @@ if __name__ == "__main__":
 
     else:
         target_years = target.split(",")
-
         for y in target_years:
             if y.isdecimal():
                 records_in_csv(int(y))

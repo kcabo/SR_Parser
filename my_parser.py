@@ -106,6 +106,7 @@ class Event:
         self.sex = int(matchOb.group(2))
         self.style = int(matchOb.group(3))
         self.distance = int(matchOb.group(4))
+        self.is_relay = False if self.style < 6 else True
         self.event_id = self.sex * 100 + self.style * 10 + self.distance
 
     def extract(self):
@@ -113,8 +114,7 @@ class Event:
         soup = BeautifulSoup(html, "lxml")
         rows = soup.find_all("tr", align = "center", bgcolor = False) #, class_ = False) #中央寄せで背景なしクラス指定なし= レコード行
         rows_lap = soup.find_all("tr", align = "right", id = True, style = True) #idとか指定してあるのはLAPのtrだけ このtrは見出しも含むLAPSのテーブル全体
-        is_relay = False if self.style < 6 else True
-        self.records = [Record(row, row_lap, is_relay) for row, row_lap in zip(rows, rows_lap)]
+        self.records = [Record(row, row_lap, self.is_relay) for row, row_lap in zip(rows, rows_lap)]
 
 class Record:
     def __init__(self, row, row_lap, is_relay):
