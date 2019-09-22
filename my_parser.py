@@ -12,6 +12,7 @@ meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)")
 
 jrHigh_grade_ptn = re.compile(r"中.+([1-2])") #ここ状況に応じて変える
 univ_grade_ptn = re.compile(r"大.+(\d)")
+high_grade_ptn =  re.compile(r"高.+([1-3])")
 
 
 def get_html(url, params = None):
@@ -66,12 +67,14 @@ class Meet:
                         # matchOb = re.search(jrHigh_grade_ptn, r.grade)
 
                         #----大学生のみを抽出----
-                        matchOb = re.search(univ_grade_ptn, r.grade)
+                        # matchOb = re.search(univ_grade_ptn, r.grade)
 
+                        #高校生のみ
+                        matchOb = re.search(high_grade_ptn, r.grade)
 
                         if matchOb is not None:
                             # grade = "中学" + str(int(matchOb.group(1)) + 1) #去年の記録のときは学年をいっこあげる
-                            grade = "大学" + str(int(matchOb.group(1)))
+                            grade = "高校" + str(int(matchOb.group(1)))
                             records.append([r.name, r.team, grade, distance, style, r.time, self.id])
                         #--ここまで--
 
@@ -82,20 +85,7 @@ class Meet:
                             if target_index >= 0 and int(target_index) == target_index:
                                 records.append([r.name[0], r.team, r.grade, distance, style, r.laps[int(target_index)], self.id])
 
-        # for eve in self.events:
-        #     if eve.sex == sex and eve.style == style and eve.distance == distance:
-        #         eve.extract()
-        #
-        #         if style < 6:
-        #             for r in eve.records:
-        #                 index = len(r.laps)/2 - 1
-        #                 if index < 0:
-        #                     print("\nラップが存在しません。id:{} name:{} time:{}".format(self.id, r.name, r.time))
-        #                     records.append([r.name, r.team, r.grade, r.time, None, 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
-        #                 else:
-        #                     records.append([r.name, r.team, r.grade, r.time, r.laps[0], 0, dic.sex[sex], dic.style[style], dic.distance[distance], self.id])
-        #         else:
-        #             pass #リレーのの抽出は今度追加しよう
+
         return records
 
 class Event:
@@ -124,8 +114,9 @@ class Record:
             self.team = fix_td2str(data[2])
             self.grade = fix_td2str(data[3])
             self.time = conv_to_100sec(fix_td2str(data[4].a))
-            laps = row_lap.find_all("td", width = True)
-            self.laps = [conv_to_100sec(fix_td2str(lap.string)) for lap in laps]
+            # おそすぎるからコメントアウト
+            # laps = row_lap.find_all("td", width = True)
+            # self.laps = [conv_to_100sec(fix_td2str(lap.string)) for lap in laps]
 
         else:
              #名前のところが<br>タグで7つに区切られている。タグでないところのみ抽出

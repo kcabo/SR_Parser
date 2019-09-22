@@ -1,5 +1,6 @@
 import csv
 import sys
+import os
 import datetime
 from time import time
 from tqdm import tqdm
@@ -14,7 +15,7 @@ region_ids = [
     "49", "50", "51", "52", "53", "70", "80"
 ]
 
-# region_ids = ["14"]
+region_ids = ["14"]
 
 def records_in_csv(year):
     t1 = time()
@@ -33,7 +34,7 @@ def records_in_csv(year):
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
             for e in meet.events:
-                if e.is_relay = False:
+                if e.is_relay == False:
                     e.extract()
                     distance = dic.distance[e.distance]
                     style = dic.style[e.style]
@@ -48,7 +49,7 @@ def records_in_csv(year):
         writer = csv.writer(f, lineterminator='\n')
         writer.writerows(year_records)
 
-    print("###{}年度を完了###経過：{:.2f}秒###".format(year,time() - t1))
+    print("###{}年度を完了###経過：{:.2f}分###".format(year,(time() - t1)/60))
 
 
 def old_records_in_csv(year):
@@ -69,7 +70,7 @@ def old_records_in_csv(year):
         for id in tqdm(meet_ids):
             meet = my_parser.Meet(id)
             if meet.pool == "長水路":
-                records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155)) #,164,165,166,174,175))
+                records.extend(meet.get_records(112,113,114,115,116,117,122,123,124,132,133,134,142,143,144,154,155,164,165,166,174,175))
 
         print("> {:.2f}秒  レコード数:{:>5}\n".format(time() - t2, len(records) - count))
         count = len(records)
@@ -113,17 +114,22 @@ def update_meets_info():
 
 if __name__ == "__main__":
 
-    target = input("####SR_PARSER###\ninput target years or 'update' >> ")
+    target = input("\n####SR_PARSER###\ninput target years or 'update' >> ")
 
     if target == "update":
         update_meets_info()
 
     else:
         target_years = target.split(",")
+        td = datetime.date.today()
+        path = "output/{}".format(str(td))
+        if not os.path.exists(path):
+            os.mkdir(path)
 
         for y in target_years:
             if y.isdecimal():
-                records_in_csv(int(y))
+                old_records_in_csv(int(y))
+                # records_in_csv(int(y))
             else:
                 print("invalid year")
                 sys.exit(1)
