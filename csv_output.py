@@ -15,7 +15,7 @@ region_ids = [
     "49", "50", "51", "52", "53", "70", "80"
 ]
 
-region_ids = ["14"]
+# region_ids = ["14"]
 
 def records_in_csv(year):
     t1 = time()
@@ -56,7 +56,7 @@ def old_records_in_csv(year):
     t1 = time()
 
     #ココ変える
-    path = "output/2019_univ/{}.csv".format(year)
+    path = "output/{}/{}.csv".format(str(td),year)
 
     records = []
     count = 0

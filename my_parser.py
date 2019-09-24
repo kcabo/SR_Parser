@@ -12,7 +12,7 @@ meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)")
 
 jrHigh_grade_ptn = re.compile(r"中.+([1-2])") #ここ状況に応じて変える
 univ_grade_ptn = re.compile(r"大.+(\d)")
-high_grade_ptn =  re.compile(r"高.+([1-3])")
+high_grade_ptn =  re.compile(r"高.+([1-2])")
 
 
 def get_html(url, params = None):
