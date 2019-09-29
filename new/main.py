@@ -19,13 +19,13 @@ session = Session()
 
 meet_link_ptn = re.compile(r"code=[0-9]{7}$") # <a href="../../swims/ViewResult?h=V1000&amp;code=0119605"
 meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)") # 茨城:第42回県高等学校春季　（取手ｸﾞﾘｰﾝｽﾎﾟｰﾂｾﾝﾀｰ） 長水路
+event_link_ptn = re.compile(r"&code=(\d{7})&sex=(\d)&event=(\d)&distance=(\d)") # "/swims/ViewResult?h=V1100&code=0919601&sex=1&event=5&distance=4"
 
 
 def get_html(url):
     req = requests.get(url)
     req.encoding = "cp932"
     return req.text
-
 
 class Meet(Base):
     __tablename__ = 'meets'
@@ -60,6 +60,16 @@ class Meet(Base):
         self.pool = matchOb.group(3)
 
 
+class IndividualEvent: # 個人種目
+    def __init__(self, link):   # link = "/swims/ViewResult?h=V1100&code=0919601&sex=1&event=5&distance=4"
+        matchOb = re.search(event_link_ptn, link)
+        self.url = "http://www.swim-record.com" + link
+        self.meet_id = matchOb.group(1)
+        self.sex = int(matchOb.group(2))
+        self.style = int(matchOb.group(3))
+        self.distance = int(matchOb.group(4))
+
+
 
 def create_table():
     Base.metadata.create_all(bind=engine)
@@ -88,5 +98,21 @@ def fetch_meets(year):
     session.add_all(meets)
     session.commit()
 
-if __name__ == '__main__':
-    fetch_meets(input())
+
+
+targets = session.query(Meet).all() # .filter(Meet.meetid == "0919701").all()
+events = []
+for meet in tqdm(targets):
+    html = get_html("http://www.swim-record.com/swims/ViewResult/?h=V1000&code=" + meet.meetid)
+    soup = BeautifulSoup(html, "lxml")
+    events_aTags = soup.find_all("a", class_=True)
+    events.extend([IndividualEvent(a["href"]) for a in events_aTags])
+
+# for e in events:
+#     print(e.url)
+
+print(len(events)) #25690 10min-1390meets
+
+#
+# if __name__ == '__main__':
+#     fetch_meets(input())
