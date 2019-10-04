@@ -20,7 +20,31 @@ session = Session()
 meet_link_ptn = re.compile(r"code=[0-9]{7}$") # <a href="../../swims/ViewResult?h=V1000&amp;code=0119605"
 meet_caption_ptn = re.compile(r"(.+)　（(.+)） (.水路)") # 茨城:第42回県高等学校春季　（取手ｸﾞﾘｰﾝｽﾎﾟｰﾂｾﾝﾀｰ） 長水路
 event_link_ptn = re.compile(r"&code=(\d{7})&sex=(\d)&event=(\d)&distance=(\d)") # "/swims/ViewResult?h=V1100&code=0919601&sex=1&event=5&distance=4"
+space_erase_table = str.maketrans("","","\n\r 　 ") # 第三引数に指定した文字が削除される。左から、LF,CR,半角スペース,全角スペース,nbsp
+space_and_nums = str.maketrans("","","\n\r 　 1234.")
+time_format_ptn = re.compile(r'([0-9]{0,2}):?([0-9]{2}).([0-9]{2})')
 
+
+def del_space(str):
+    return str.translate(space_erase_table) if str is not None else ""
+
+def del_numspace(str):
+    return str.translate(space_and_nums)
+
+def format_time(time_str):
+    if time_str == "" or time_str == "--:--.--" or time_str == "-":
+        return ""
+    else:
+        ob = re.match(time_format_ptn, time_str)
+        if ob is None:
+            print('\n無効なタイム文字列:{}'.format(time_str))
+            return time_str
+        else:
+            min = ob.group(1) if ob.group(1) != "" else 0
+            return "{}:{}.{}".format(min, ob.group(2), ob.group(3))
+
+def create_table():
+    Base.metadata.create_all(bind=engine)
 
 def get_html(url):
     req = requests.get(url)
@@ -115,19 +139,44 @@ class RelayResult(Base): #リレーの１結果
     sex = Column(Integer, nullable = False)                     # 性別
     style = Column(Integer, nullable = False)                   # 泳法
     distance = Column(Integer, nullable = False)                # 距離
-    team = Column(String, nullable = False)                     # 所属名
+    rank = Column(String, nullable = False)                     # 順位（棄権や失格の場合も記述される）
     first = Column(String, nullable = False)                    # 第一泳者
     second = Column(String, nullable = False)                   # 第二泳者
     third = Column(String, nullable = False)                    # 第三泳者
     fourth = Column(String, nullable = False)                   # 第四泳者
+    team = Column(String, nullable = False)                     # 所属名
     time = Column(String, nullable = False)                     # タイム。#:##.##書式文字列
     laps = Column(String, nullable = False)                     # ラップタイム。#:##.##,#:##.##,...
 
-def create_table():
-    Base.metadata.create_all(bind=engine)
+    def __init__(self, meet_id, sex, style, distance, row, lap_table):
+        self.meetid = meet_id
+        self.sex = sex
+        self.style = style
+        self.distance = distance
+        data = row.find_all("td")
+        self.rank = data[0].text # stringだとタグを含んだときにNoneが返されるから
+        swimmers = [del_numspace(name) for name in data[1].contents if isinstance(name, element.NavigableString)] # data[1].contentsはbrタグを含む配列
+        count_swimmers = len(swimmers)
+        if count_swimmers !=4 and count_swimmers!=1:
+            print(data[1])
+            raise IndexError("泳者が４人でも空白スペースだけでもありません！")
+        self.first = swimmers[0] if count_swimmers == 4 else ""
+        self.second = swimmers[1] if count_swimmers == 4 else ""
+        self.third = swimmers[2] if count_swimmers == 4 else ""
+        self.fourth = swimmers[3] if count_swimmers == 4 else ""
+        self.team = data[2].string
+        self.time = data[3].a.string if data[3].a is not None else ""
+        laps = lap_table.find_all("td", width = True)
+        self.laps = [lap.string for lap in laps]
+
+    def fix_raw_data(self):
+        self.rank = del_space(self.rank)
+        self.team = del_space(self.team)
+        self.time = format_time(del_space(self.time))
+        self.laps = ",".join([format_time(del_space(lap)) for lap in self.laps])
 
 
-# 大会一覧から大会IDの一覧をとってくる
+# 地域ごとの大会一覧から大会IDの一覧をとってくるサブモジュール
 def find_meet(year, area):
     url = r"http://www.swim-record.com/taikai/{}/{}.html".format(year, area)
     html = get_html(url)
@@ -151,11 +200,11 @@ def fetch_meets(year):
     session.commit()
 
 
-def arrange_events():
-    targets = session.query(Meet).all() # .filter(Meet.start >= "2019/09/25").all()
+# 大会一覧からイベントの配列を作るサブモジュール
+def arrange_events(target_meets):
     events = []
-    print("{}の大会の全開催種目を集めています…".format(len(targets)))
-    for meet in tqdm(targets):
+    print("{}の大会の全開催種目を集めています…".format(len(target_meets)))
+    for meet in tqdm(target_meets):
         html = get_html("http://www.swim-record.com/swims/ViewResult/?h=V1000&code=" + meet.meetid)
         soup = BeautifulSoup(html, "lxml")
         aTags = soup.find_all("a", class_=True)             # 100m自由形などへのリンク
@@ -164,38 +213,28 @@ def arrange_events():
     return events
 
 
-space_erase_table = str.maketrans("","","\n\r 　 ") #第三引数に指定した文字が削除される。左から、LF,CR,半角スペース,全角スペース,nbsp
-def del_space(str):
-    return str.translate(space_erase_table) if str is not None else ""
-
-time_format_ptn = re.compile(r'([0-9]{0,2}):?([0-9]{2}).([0-9]{2})')
-def format_time(time_str):
-    if time_str == "":
-        return ""
-    else:
-        ob = re.match(time_format_ptn, time_str)
-        min = ob.group(1) if ob.group(1) != "" else 0
-        return "{}:{}.{}".format(min, ob.group(2), ob.group(3))
-
-
-# create_table()
-# fetch_meets(19)
-
-events = arrange_events()
-records =[]
-
-for e in tqdm(events):
-    if e.style <= 5: # 個人種目＝自由形・背泳ぎ・平泳ぎ・バタフライ・個人メドレー
+def fetch_records():
+    target_meets = session.query(Meet).filter(Meet.start >= "2019/06/25", Meet.start <= "2019/07/30").all()
+    # target_meets = session.query(Meet).filter(Meet.meetid == meetid).all()
+    # target_meets = session.query(Meet).filter(Meet.start >= minDate).all()
+    # target_meets = session.query(Meet).all()
+    events = arrange_events(target_meets)
+    records =[]
+    print('記録の抽出を開始します...')
+    for e in tqdm(events):
         table, lap_tables = e.parse_table()
-        records.extend([Record(e.meet_id, e.sex, e.style, e.distance, row, lap_table) for row, lap_table in zip(table, lap_tables)])
+        if e.style <= 5: # 個人種目＝自由形・背泳ぎ・平泳ぎ・バタフライ・個人メドレー
+            records.extend([Record(e.meet_id, e.sex, e.style, e.distance, row, lap_table) for row, lap_table in zip(table, lap_tables)])
+        else:
+            records.extend([RelayResult(e.meet_id, e.sex, e.style, e.distance, row, lap_table) for row, lap_table in zip(table, lap_tables)])
+    print('{}個の記録が見つかりました。\nデータを適切な形に編集しています...'.format(len(records)))
+    for r in records:
+        r.fix_raw_data()
+    session.add_all(records)
+    session.commit()
 
-for r in records:
-    r.fix_raw_data()
-    # print(r.meetid, r.style, r.name, r.team, r.grade, r.time,  r.laps)
 
-session.add_all(records)
-session.commit()
-
-#
-# if __name__ == '__main__':
-#     fetch_meets(input())
+if __name__ == '__main__':
+    # create_table()
+    # fetch_meets(19)
+    fetch_records()
